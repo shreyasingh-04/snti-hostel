@@ -9,8 +9,8 @@ from app.models import user, menu as menu_models  # noqa
 app = FastAPI(title="Snti Hostel Mess API", version="1.0.0")
 
 app.add_middleware(CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL, "http://localhost:5173"],
-    allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+    allow_origins=["*"],
+    allow_credentials=False, allow_methods=["*"], allow_headers=["*"])
 
 app.include_router(auth.router)
 app.include_router(menu.router)

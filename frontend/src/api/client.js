@@ -1,21 +1,18 @@
-// src/api/client.js
-// Central Axios instance — automatically adds the JWT token to every request
-
 import axios from 'axios'
 
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
 const client = axios.create({
-  baseURL: '/api',
+  baseURL: `${BASE_URL}/api`,
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Before every request: attach the stored token if it exists
 client.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
-// If the server returns 401 (token expired/invalid): log out automatically
 client.interceptors.response.use(
   (res) => res,
   (err) => {

@@ -179,3 +179,21 @@ async def export_excel(db: AsyncSession = Depends(get_db), _admin: User = Depend
     return StreamingResponse(stream,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": "attachment; filename=snti_registrations.xlsx"})
+
+
+@router.delete("/users/{user_id}")
+async def delete_single_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin),
+):
+    """Admin manually deletes a specific student."""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    await db.execute(delete(Menu).where(Menu.user_id == user_id))
+    await db.execute(delete(Feedback).where(Feedback.user_id == user_id))
+    await db.delete(user)
+    await db.commit()
+    return {"deleted": user_id}

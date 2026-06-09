@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { apiGetStats, apiGetAllUsers, apiGetRegistrations, apiGetAllFeedback,
          apiDeleteExpired, apiExportExcel, apiGetMenuOptions,
          apiAddMenuOption, apiDeleteMenuOption, apiUploadStudents } from '../api'
+import client from '../api/client'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts'
 
 const TABS = [
@@ -15,6 +16,8 @@ const TABS = [
 
 export default function AdminDashboard() {
   const [tab, setTab]               = useState('overview')
+  const [sidebarOpen, setSidebar]   = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(null)
   const [stats, setStats]           = useState(null)
   const [users, setUsers]           = useState([])
   const [regs, setRegs]             = useState([])
@@ -29,6 +32,17 @@ export default function AdminDashboard() {
   const fileRef = useRef()
 
   const showAlert = (type, msg) => { setAlert({type, msg}); setTimeout(() => setAlert(null), 4000) }
+
+  const handleDeleteStudent = (user) => { setConfirmDelete(user) }
+
+  const confirmDeleteStudent = async () => {
+    try {
+      await client.delete('/admin/users/' + confirmDelete.id)
+      showAlert('success', confirmDelete.name + ' deleted.')
+      setConfirmDelete(null)
+      loadAll()
+    } catch { showAlert('error', 'Failed to delete.') }
+  }
 
   const loadAll = async () => {
     setLoading(true)
@@ -95,8 +109,30 @@ export default function AdminDashboard() {
 
   return (
     <div style={{ display:'flex', minHeight:'calc(100vh - 56px)' }}>
+      {/* Overlay */}
+      {sidebarOpen && <div onClick={() => setSidebar(false)} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.3)', zIndex:99 }} />}
+
+      <button onClick={() => setSidebar(!sidebarOpen)} style={{ position:'fixed', top:68, left:14, zIndex:101, width:34, height:34, borderRadius:8, background:'#1D9E75', color:'#fff', border:'none', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:4, boxShadow:'0 2px 8px rgba(0,0,0,0.2)', padding:'7px 8px' }}>
+        {sidebarOpen ? (
+          <>
+            <span style={{ width:16, height:2, background:'#fff', borderRadius:2, transform:'rotate(45deg) translate(4px, 4px)', display:'block' }} />
+            <span style={{ width:16, height:2, background:'#fff', borderRadius:2, opacity:0, display:'block' }} />
+            <span style={{ width:16, height:2, background:'#fff', borderRadius:2, transform:'rotate(-45deg) translate(4px, -4px)', display:'block' }} />
+          </>
+        ) : (
+          <>
+            <span style={{ width:16, height:2, background:'#fff', borderRadius:2, display:'block' }} />
+            <span style={{ width:16, height:2, background:'#fff', borderRadius:2, display:'block' }} />
+            <span style={{ width:16, height:2, background:'#fff', borderRadius:2, display:'block' }} />
+          </>
+        )}
+      </button>
+
+      {/* Toggle button */}
+
+
       {/* Sidebar */}
-      <div style={{ width:220, background:'#fff', borderRight:'1px solid rgba(0,0,0,0.08)', padding:'1.25rem 0', flexShrink:0, display:'flex', flexDirection:'column' }}>
+      <div style={{ position:'fixed', top:56, left: sidebarOpen ? 0 : -225, width:220, height:'calc(100vh - 56px)', background:'#fff', borderRight:'1px solid rgba(0,0,0,0.08)', padding:'1.25rem 0', display:'flex', flexDirection:'column', zIndex:100, transition:'left 0.25s ease', boxShadow: sidebarOpen ? '4px 0 20px rgba(0,0,0,0.1)' : 'none' }}>
         <div style={{ padding:'0 1rem 1rem', borderBottom:'1px solid rgba(0,0,0,0.06)', marginBottom:'0.5rem' }}>
           <p style={{ fontSize:11, fontWeight:600, color:'#9b9b95', textTransform:'uppercase', letterSpacing:'0.06em' }}>Admin Panel</p>
         </div>
@@ -119,7 +155,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Main content */}
-      <div style={{ flex:1, overflow:'auto', background:'#F4F6F9', padding:'1.5rem' }}>
+      <div style={{ flex:1, overflow:'auto', background:'#F4F6F9', padding:'1.5rem 1.5rem 1.5rem 3.5rem' }}>
         {alert && (
           <div className={`alert alert-${alert.type}`} style={{ marginBottom:'1rem', maxWidth:600 }}>
             <i className={`ti ti-${alert.type==='error'?'alert-circle':'circle-check'}`} />{alert.msg}
@@ -194,7 +230,7 @@ export default function AdminDashboard() {
             </div>
             <div className="table-wrap">
               <table>
-                <thead><tr><th>Name</th><th>Trainee ID</th><th>Type</th><th>Block</th><th>Mess</th><th>Registered</th><th>Expires</th></tr></thead>
+                <thead><tr><th>Name</th><th>Trainee ID</th><th>Type</th><th>Block</th><th>Mess</th><th>Registered</th><th>Expires</th><th>Action</th></tr></thead>
                 <tbody>
                   {filteredUsers.map(u => {
                     const expDays = u.expires_at ? Math.ceil((new Date(u.expires_at) - new Date())/(1000*60*60*24)) : null
@@ -221,6 +257,7 @@ export default function AdminDashboard() {
                             </span>
                           )}
                         </td>
+                      <td><button onClick={() => { console.log('delete', u); setConfirmDelete(u); }} style={{background:'#FCEBEB',color:'#A32D2D',border:'none',borderRadius:6,padding:'5px 10px',fontSize:12,cursor:'pointer'}}>Delete</button></td>
                       </tr>
                     )
                   })}
@@ -290,7 +327,7 @@ export default function AdminDashboard() {
 
         {/* MENUS TAB */}
         {tab==='menus' && (
-          <div style={{ maxWidth:600 }}>
+          <div>
             <h2 style={{ fontSize:20, fontWeight:700, marginBottom:'1.25rem' }}>Manage Menu Options</h2>
             <div className="card" style={{ marginBottom:'1.25rem' }}>
               <p style={{ fontWeight:600, marginBottom:'0.75rem' }}>Add new dish</p>
@@ -327,7 +364,7 @@ export default function AdminDashboard() {
 
         {/* BULK UPLOAD TAB — PPT Phase 1 */}
         {tab==='upload' && (
-          <div style={{ maxWidth:560 }}>
+          <div>
             <h2 style={{ fontSize:20, fontWeight:700, marginBottom:'0.5rem' }}>Bulk Upload Students</h2>
             <p style={{ color:'#6b6b65', marginBottom:'1.5rem', fontSize:13 }}>Upload a CSV file to add multiple trainees at once (PPT Phase 1)</p>
 
@@ -380,6 +417,19 @@ export default function AdminDashboard() {
           </div>
         )}
       </div>
+    {/* Delete confirmation modal */}
+      {confirmDelete && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div style={{ background:'#fff', borderRadius:16, padding:'2rem', maxWidth:380, width:'90%' }}>
+            <h3 style={{ fontSize:17, fontWeight:600, marginBottom:8 }}>Delete Student</h3>
+            <p style={{ color:'#6b6b65', fontSize:14, marginBottom:20 }}>Delete <strong>{confirmDelete.name}</strong>? This cannot be undone.</p>
+            <div style={{ display:'flex', gap:10 }}>
+              <button className="btn-ghost" style={{ flex:1 }} onClick={() => setConfirmDelete(null)}>Cancel</button>
+              <button className="btn-danger" style={{ flex:1 }} onClick={confirmDeleteStudent}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
